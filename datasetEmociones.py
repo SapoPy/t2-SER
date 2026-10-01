@@ -41,7 +41,7 @@ class EmotionDataset(Dataset):
         # si se entrega una transformacion se aplica al audio
         if self.transform:
             audio_signal = self.transform(audio_signal)
-
+            return audio_signal, labels
         # se entregan los resultados guardados en GPU
         return audio_signal[0], labels
 
