@@ -1,7 +1,7 @@
 import torch
 import torchaudio
 from torch import nn
-MAX_LEN = 1400
+MAX_LEN = 512
 def transformer_transform(x):
     transform = torchaudio.transforms.Spectrogram(
         n_fft=256,
