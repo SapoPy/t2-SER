@@ -46,10 +46,11 @@ class EmotionDataset(Dataset):
         return audio_signal[0], labels
 
 
+ANNOTATIONS_FILE = 'labels.csv'
+AUDIO_DIR = 'Emociones/Podcast/'
+
 if __name__ == "__main__":
 
-    ANNOTATIONS_FILE = 'labels.csv'
-    AUDIO_DIR = 'Emociones/Podcast/'
 
     train_dataset = EmotionDataset(ANNOTATIONS_FILE,
                     AUDIO_DIR, 
