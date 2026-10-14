@@ -18,6 +18,12 @@ class EmotionDatasetSF(EmotionDataset):
                                   fila["dominance"]], dtype=torch.float32)
         return self.transform(señal), etiquetas
 
+def ccc(real, pred):
+    mr, mp = real.mean(), pred.mean()
+    vr, vp = real.var(unbiased=False), pred.var(unbiased=False)
+    cov = ((real - mr) * (pred - mp)).mean()
+    return (2 * cov / (vr + vp + (mr - mp) ** 2)).item()
+
 def evaluar(modelo, batches):
     modelo.eval()
     predicciones, reales = [], []
@@ -28,7 +34,10 @@ def evaluar(modelo, batches):
     pred = torch.cat(predicciones)
     real = torch.cat(reales)
     mse = ((pred - real) ** 2).mean(dim=0)
-    return mse.tolist()
+    ccc_a = ccc(real[:, 0], pred[:, 0])
+    ccc_v = ccc(real[:, 1], pred[:, 1])
+    ccc_d = ccc(real[:, 2], pred[:, 2])
+    return mse.tolist() + [ccc_a, ccc_v, ccc_d]
 
 def preparar_test(transformacion):
     ds = EmotionDatasetSF(ANNOTATIONS_FILE, AUDIO_DIR,
@@ -57,9 +66,9 @@ for nombre, Clase, cabezas, archivo, datos in modelos:
     modelo = Clase(D_pos_emb=50, nhead=cabezas)
     modelo.load_state_dict(torch.load("transformer/" + archivo,
                                       map_location="cpu"))
-    mse_a, mse_v, mse_d = evaluar(modelo, datos)
-    filas.append([nombre, mse_a, mse_v, mse_d,
-                  (mse_a + mse_v + mse_d) / 3]) 
+    mse_a, mse_v, mse_d, ccc_a, ccc_v, ccc_d = evaluar(modelo, datos)
+    filas.append([nombre, mse_a, mse_v, mse_d, (mse_a + mse_v + mse_d) / 3,
+                  ccc_a, ccc_v, ccc_d, (ccc_a + ccc_v + ccc_d) / 3]) 
     print("Listo:", nombre)
 
 etiquetas = pd.read_csv(AUDIO_DIR + ANNOTATIONS_FILE)
@@ -69,13 +78,11 @@ media_train = etiquetas[etiquetas["partition"] == "train"][columnas].mean()
 reales_test = etiquetas[etiquetas["partition"] == "test"][columnas] 
 
 mse_dummy = ((reales_test - media_train) ** 2).mean()
-filas.append(["Dummy (promedio train)", *mse_dummy.tolist(), 
-              mse_dummy.mean()])
+filas.append(["Dummy", *mse_dummy.tolist(), mse_dummy.mean(),
+              0, 0, 0, 0])
 
-print("Promedios de train usados por el dummy:")
-print(media_train.round(3).to_string())
-
-tabla = pd.DataFrame(filas, columns=["Modelo", "MSE Activation",
-                                     "MSE Valence", "MSE Dominance", "Promedio"])
+tabla = pd.DataFrame(filas, columns=["Modelo",
+                                     "MSE A", "MSE V", "MSE D", "MSE prom",
+                                     "CCC A", "CCC V", "CCC D", "CCC prom"])
 print(tabla.round(3).to_string(index=False))
 
